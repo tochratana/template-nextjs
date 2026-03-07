@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# App Test Deployment Pipeline
 
-## Getting Started
+This repository contains a unified CI/CD workflow testing an end-to-end deployment strategy, including code scanning, container building, container scanning, pushing images, updating an ArgoCD GitOps repository, and finally ensuring ArgoCD applies the changes to a Kubernetes cluster.
 
-First, run the development server:
+## Features Included in the `ci-cd.yml` Workflow:
+
+1. **SonarQube Scan**: Static code analysis and test coverage.
+2. **Trivy Filesystem Scan**: Scans the root filesystem for vulnerabilities.
+3. **Build, Scan, & Push**: Builds the Docker container, scans the container with Trivy, and pushes it to DockerHub tagged with the commit SHA and `latest`.
+4. **Update GitOps**: Modifies the target `helm-argocd` repository values to use the newly pushed image.
+5. **ArgoCD Deploy**: Idempotently creates/syncs an Argo Application for immediate deployment.
+
+## Automation Script
+
+An `auto-push.sh` script is provided for quickly pushing your changes to GitHub to trigger this unified pipeline.
+
+### Usage
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+./auto-push.sh "Your commit message"
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+If no commit message is provided, it defaults to: `Auto-commit: update configurations and code`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Make sure it's executable first (already done upon file creation):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+chmod +x auto-push.sh
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+_This is a Next.js project bootstrapped with `create-next-app`._

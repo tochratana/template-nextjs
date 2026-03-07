@@ -1,0 +1,236 @@
+name: "CI/CD Pipeline"
+
+on:
+  push:
+    branches: [master, develop]
+  pull_request:
+    branches: [master]
+
+env:
+  DOCKER_IMAGE_NAME: reactjs-template
+  # Adjusting to standard DOCKERHUB_USERNAME across all usages for consistency
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/reactjs-template
+  HELM_REPO: tochratana/helm-argocd
+  GITOPS_BRANCH: main
+  ARGOCD_APP_NAME: helm-argocd
+  ARGOCD_APP_PATH: .
+  APP_NAMESPACE: default
+  ARGOCD_NAMESPACE: argocd
+
+jobs:
+  sonarqube-scan:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for SonarQube blame info
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage --watchAll=false
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=my-react-app
+            -Dsonar.sources=src
+            -Dsonar.tests=src
+            -Dsonar.test.inclusions=**/*.test.tsx,**/*.test.ts,**/*.spec.tsx,**/*.spec.ts
+            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.qualitygate.wait=true
+
+  trivy-fs-scan:
+    name: Trivy Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy on filesystem
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-fs-results.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy FS results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        # Use success() || failure() instead of always() to avoid triggering if checkout fails
+        if: success() || failure()
+        with:
+          sarif_file: "trivy-fs-results.sarif"
+          category: "trivy-filesystem"
+
+  build-scan-push:
+    name: Build, Scan & Push Image
+    runs-on: ubuntu-latest
+    needs: [sonarqube-scan, trivy-fs-scan]
+    environment: DOCKER_ENV
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Add Commit SHA to TAG env
+        run: echo "TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+
+      - name: Build Docker image
+        run: docker build -t ${{ env.DOCKER_IMAGE }}:${{ env.TAG }} .
+
+      - name: Run Trivy image scan (table output to logs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.DOCKER_IMAGE }}:${{ env.TAG }}"
+          format: "table"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          ignore-unfixed: true
+
+      - name: Run Trivy image scan (SARIF for GitHub Security)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.DOCKER_IMAGE }}:${{ env.TAG }}"
+          format: "sarif"
+          output: "trivy-image-results.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy image results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: success() || failure()
+        with:
+          sarif_file: "trivy-image-results.sarif"
+          category: "trivy-image"
+
+      - name: Log in to Docker Hub
+        # Only push from master branch (scan and build runs on PR and develop, but push only on master)
+        if: github.ref == 'refs/heads/master'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Tag image as latest
+        if: github.ref == 'refs/heads/master'
+        run: docker tag ${{ env.DOCKER_IMAGE }}:${{ env.TAG }} ${{ env.DOCKER_IMAGE }}:latest
+
+      - name: Push image (sha tag + latest)
+        if: github.ref == 'refs/heads/master'
+        run: |
+          docker push ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
+          docker push ${{ env.DOCKER_IMAGE }}:latest
+
+      - name: Logout from Dockerhub
+        if: always()
+        run: docker logout
+
+  update-gitops:
+    name: Update GitOps Repository
+    runs-on: ubuntu-latest
+    needs: build-scan-push
+    environment: HELM_ENV
+    # Only update gitops if we pushed the image (meaning we are on master branch)
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Install yq command
+        run: |
+          wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      - name: Add Commit SHA to TAG env
+        run: echo "TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+
+      - name: Clone argocd repo
+        run: git clone https://github.com/${{ env.HELM_REPO }} helm_repo
+
+      - name: Update Helm Chart
+        run: |
+          cd helm_repo
+          echo "Update repository username/imagename"
+          yq -i ".image.repository=\"${{ env.DOCKER_IMAGE }}\"" values.yaml
+
+          echo "Update image tag"
+          yq -i ".image.tag=\"${{ env.TAG }}\"" values.yaml
+
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          git add .
+          git commit -m "Update helm to use image ${{ env.TAG }}"
+          git push https://${{ secrets.GIT_TOKEN }}@github.com/${{ env.HELM_REPO }}
+
+      - name: Clean up
+        if: always()
+        run: rm -rf helm_repo
+
+  argocd-deploy:
+    name: ArgoCD Create & Sync
+    runs-on: ubuntu-latest
+    needs: update-gitops
+    if: github.ref == 'refs/heads/master'
+    steps:
+      - name: Install ArgoCD CLI
+        run: |
+          curl -sSL -o /usr/local/bin/argocd \
+            https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+          argocd version --client
+
+      - name: Add Commit SHA to TAG env
+        run: echo "TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+
+      - name: Login to ArgoCD
+        run: |
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --insecure
+
+      - name: Create / Update ArgoCD Application
+        run: |
+          argocd app create ${{ env.ARGOCD_APP_NAME }} \
+            --repo https://github.com/${{ env.HELM_REPO }}.git \
+            --revision ${{ env.GITOPS_BRANCH }} \
+            --path ${{ env.ARGOCD_APP_PATH }} \
+            --dest-server https://kubernetes.default.svc \
+            --dest-namespace ${{ env.APP_NAMESPACE }} \
+            --sync-policy automated \
+            --auto-prune \
+            --self-heal \
+            --upsert \
+            --helm-set image.repository=${{ env.DOCKER_IMAGE }} \
+            --helm-set image.tag=${{ env.TAG }}
+
+      - name: Sync ArgoCD Application
+        run: |
+          argocd app sync ${{ env.ARGOCD_APP_NAME }} \
+            --force \
+            --prune
+
+      - name: Wait for healthy rollout
+        run: |
+          argocd app wait ${{ env.ARGOCD_APP_NAME }} \
+            --health \
+            --timeout 300
+
+      - name: Print final application status
+        if: always()
+        run: |
+          argocd app get ${{ env.ARGOCD_APP_NAME }}
