@@ -186,8 +186,8 @@ jobs:
           echo "Update image tag"
           yq -i ".image.tag=\"${{ env.TAG }}\"" values.yaml
 
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+          git config --global user.email "tochratana@users.github.com"
+          git config --global user.name "iloveyou"
 
           git add .
           git commit -m "Update helm to use image ${{ env.TAG }}"
