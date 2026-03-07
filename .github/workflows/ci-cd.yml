@@ -20,6 +20,8 @@ env:
   ARGOCD_APP_PATH: .
   APP_NAMESPACE: default
   ARGOCD_NAMESPACE: argocd
+  TAG: ""
+  SONAR_SKIP: ""
 
 jobs:
   sonarqube-scan:
@@ -48,7 +50,18 @@ jobs:
             echo "No test script found, skipping tests."
           fi
 
+      - name: Check SonarQube Secrets
+        run: |
+          if [ -z "${{ secrets.SONAR_TOKEN }}" ] || [ -z "${{ secrets.SONAR_HOST_URL }}" ]; then
+            echo "SONAR_TOKEN or SONAR_HOST_URL is missing in GitHub Secrets."
+            echo "Skipping SonarQube scan..."
+            echo "SONAR_SKIP=true" >> $GITHUB_ENV
+          else
+            echo "SONAR_SKIP=false" >> $GITHUB_ENV
+          fi
+
       - name: SonarQube Scan
+        if: env.SONAR_SKIP == 'false'
         uses: SonarSource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
