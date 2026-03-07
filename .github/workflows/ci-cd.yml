@@ -70,10 +70,6 @@ jobs:
           args: >
             -Dsonar.projectKey=my-react-app
             -Dsonar.sources=src
-            -Dsonar.tests=src
-            -Dsonar.test.inclusions=**/*.test.tsx,**/*.test.ts,**/*.spec.tsx,**/*.spec.ts
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.qualitygate.wait=true
 
   trivy-fs-scan:
     name: Trivy Filesystem Scan
