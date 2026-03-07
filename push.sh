@@ -13,6 +13,6 @@ echo "Committing with message: '$COMMIT_MSG'"
 git commit -m "$COMMIT_MSG"
 
 echo "Pushing changes to GitHub..."
-git push
+git push origin main
 
 echo "Successfully pushed! The CI/CD Pipeline should start shortly."
