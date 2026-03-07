@@ -1,0 +1,13 @@
+services:
+  app:
+    image: tochratana/nextimage:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nextjs-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped

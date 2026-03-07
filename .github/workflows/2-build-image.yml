@@ -1,0 +1,40 @@
+on:
+  push:
+    branches:
+      - master
+
+# Environment use for create variable for use in this pipeline
+env:
+  DOCKER_IMAGE_NAME: reactjs-template # image name in docker hub
+  HELM_REPO: tochratana/helm-argocd # repo that store template
+# build docker image and push to docker hub
+jobs:
+  build-image:
+    # runs-on mean select machines for run this pipeline, normaly it have two type of this (github machines, and self hosted machines)
+    runs-on: ubuntu-latest
+    environment: DOCKER_ENV # setting > Environment > create environment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Use with SHA
+        run: |
+          echo "TAG=${GITHUB_SHA::8}" >> $GITHUB_ENV
+      - name: Show the new tags value
+        run: |
+          echo "Tag value is: ${{ env.TAG }}"
+      # login to docker hub
+      # setting > Environment(create new environment) > add screte (USERNAME, PASSWORD)
+      # PASSWORD can be token from docker hub
+      - name: Login to Dockerhub
+        run: |
+          echo "${{ secrets.PASSWORD }}" | docker login -u ${{secrets.USERNAME}} --password-stdin
+
+      # Build docker image mean build and -t > tag already
+      - name: Build Docker image and tag
+        run: docker build -t ${{ secrets.USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ env.TAG }} .
+      - name: Push to Docker hub
+        run: docker push ${{ secrets.USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ env.TAG }}
+      - name: Logout from Dockerhub
+        if: always()
+        run: |
+          docker logout

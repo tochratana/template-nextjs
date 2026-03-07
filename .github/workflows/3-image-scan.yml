@@ -1,0 +1,60 @@
+name: "3 - Image Scan"
+
+on:
+  workflow_run:
+    workflows: ["2 - Build Image"]
+    types: [completed]
+    branches: [master, develop]
+
+env:
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/reactjs-template
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  trivy-image-scan:
+    name: Trivy Image Scan
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Download the image tar built in the previous workflow
+      - name: Download image artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: 2-build-image.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          name: docker-image-${{ env.IMAGE_TAG }}
+          path: .
+
+      - name: Load Docker image from tar
+        run: docker load -i image-${{ env.IMAGE_TAG }}.tar
+
+      - name: Run Trivy image scan (table output to logs)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.DOCKER_IMAGE }}:${{ env.IMAGE_TAG }}"
+          format: "table"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          ignore-unfixed: true
+
+      - name: Run Trivy image scan (SARIF for GitHub Security)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "${{ env.DOCKER_IMAGE }}:${{ env.IMAGE_TAG }}"
+          format: "sarif"
+          output: "trivy-image-results.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy image results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-image-results.sarif"
+          category: "trivy-image"
