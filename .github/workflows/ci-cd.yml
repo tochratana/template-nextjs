@@ -11,9 +11,9 @@ permissions:
   security-events: write
 
 env:
-  DOCKER_IMAGE_NAME: reactjs-template
+  DOCKER_IMAGE_NAME: template-nextjs
   # Adjusting to standard DOCKERHUB_USERNAME across all usages for consistency
-  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/reactjs-template
+  DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/template-nextjs
   HELM_REPO: tochratana/helm-argocd
   GITOPS_BRANCH: main
   ARGOCD_APP_NAME: helm-argocd
