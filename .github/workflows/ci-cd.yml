@@ -62,13 +62,14 @@ jobs:
 
       - name: SonarQube Scan
         if: env.SONAR_SKIP == 'false'
-        uses: SonarSource/sonarqube-scan-action@master
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_HOST_URL: https://sonarcloud.io
         with:
           args: >
-            -Dsonar.projectKey=my-react-app
+            -Dsonar.organization=tochratana
+            -Dsonar.projectKey=template-nextjs
             -Dsonar.sources=src
 
   trivy-fs-scan:
