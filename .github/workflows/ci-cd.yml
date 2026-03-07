@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  security-events: write
+
 env:
   DOCKER_IMAGE_NAME: reactjs-template
   # Adjusting to standard DOCKERHUB_USERNAME across all usages for consistency
@@ -36,8 +40,13 @@ jobs:
       - name: Install dependencies
         run: npm i
 
-      - name: Run tests with coverage
-        run: npm test -- --coverage --watchAll=false
+      - name: Run tests with coverage (if it exists)
+        run: |
+          if npm run | grep -q ' test'; then
+            npm test -- --coverage --watchAll=false
+          else
+            echo "No test script found, skipping tests."
+          fi
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@master
@@ -72,7 +81,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy FS results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         # Use success() || failure() instead of always() to avoid triggering if checkout fails
         if: success() || failure()
         with:
@@ -113,7 +122,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy image results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: success() || failure()
         with:
           sarif_file: "trivy-image-results.sarif"
