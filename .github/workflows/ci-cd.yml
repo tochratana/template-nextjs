@@ -224,7 +224,7 @@ jobs:
       - name: Create / Update ArgoCD Application
         run: |
           argocd app create ${{ env.ARGOCD_APP_NAME }} \
-            --repo https://github.com/${{ env.HELM_REPO }}.git \
+            --repo https://github.com/${{ env.HELM_REPO }} \
             --revision ${{ env.GITOPS_BRANCH }} \
             --path ${{ env.ARGOCD_APP_PATH }} \
             --dest-server https://kubernetes.default.svc \
