@@ -17,7 +17,7 @@ env:
   HELM_REPO: tochratana/gitops-repo.git
   GITOPS_BRANCH: main
   ARGOCD_APP_NAME: helm-argocd
-  ARGOCD_APP_PATH: .
+  ARGOCD_APP_PATH: next-ts-chart
   APP_NAMESPACE: default
   ARGOCD_NAMESPACE: argocd
   TAG: ""
