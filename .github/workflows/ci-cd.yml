@@ -236,11 +236,11 @@ jobs:
             --helm-set image.repository=${{ env.DOCKER_IMAGE }} \
             --helm-set image.tag=${{ env.TAG }}
 
-      - name: Sync ArgoCD Application
+      - name: Refresh ArgoCD Application
         run: |
-          argocd app sync ${{ env.ARGOCD_APP_NAME }} \
-            --force \
-            --prune
+          # Since the app has sync-policy=automated, we don't need to manually sync.
+          # We just do a hard refresh so ArgoCD immediately sees the Git commit and auto-syncs.
+          argocd app get ${{ env.ARGOCD_APP_NAME }} --refresh
 
       - name: Wait for healthy rollout
         run: |
