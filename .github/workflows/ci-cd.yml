@@ -14,7 +14,7 @@ env:
   DOCKER_IMAGE_NAME: template-nextjs
   # Adjusting to standard DOCKER_USERNAME across all usages for consistency
   DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/template-nextjs
-  HELM_REPO: tochratana/helm-argocd
+  HELM_REPO: tochratana/gitops-repo.git
   GITOPS_BRANCH: main
   ARGOCD_APP_NAME: helm-argocd
   ARGOCD_APP_PATH: .
@@ -181,10 +181,10 @@ jobs:
         run: |
           cd helm_repo
           echo "Update repository username/imagename"
-          yq -i ".image.repository=\"${{ env.DOCKER_IMAGE }}\"" values.yaml
+          yq -i ".image.repository=\"${{ env.DOCKER_IMAGE }}\"" next-ts-chart/values.yaml
 
           echo "Update image tag"
-          yq -i ".image.tag=\"${{ env.TAG }}\"" values.yaml
+          yq -i ".image.tag=\"${{ env.TAG }}\"" next-ts-chart/values.yaml
 
           git config --global user.email "tochratana@users.github.com"
           git config --global user.name "iloveyou"
