@@ -102,3 +102,111 @@ jobs:
       - name: Clean up
         if: always()
         run: rm -rf helm_repo
+
+  argocd-deploy:
+      name: ArgoCD Create & Sync
+      runs-on: ubuntu-latest
+      needs: update-gitops
+      # Only run when a release tag is pushed
+      if: startsWith(github.ref, 'refs/tags/v')
+      steps:
+        - name: Install ArgoCD CLI
+          run: |
+            VERSION=$(curl -L -s https://raw.githubusercontent.com/argoproj/argo-cd/stable/VERSION)
+            curl -sSL -o /usr/local/bin/argocd \
+              "https://github.com/argoproj/argo-cd/releases/download/v${VERSION}/argocd-linux-amd64"
+            chmod +x /usr/local/bin/argocd
+            argocd version --client
+
+        - name: Set image TAG
+          run: echo "TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+        - name: Login to ArgoCD
+          run: |
+            argocd login ${{ secrets.ARGOCD_SERVER }} \
+              --username ${{ secrets.ARGOCD_USERNAME }} \
+              --password ${{ secrets.ARGOCD_PASSWORD }} \
+              --insecure
+
+        - name: Create / Update ArgoCD Application
+          run: |
+            argocd app create ${{ env.ARGOCD_APP_NAME }} \
+              --repo https://github.com/${{ env.HELM_REPO }} \
+              --revision ${{ env.GITOPS_BRANCH }} \
+              --path ${{ env.ARGOCD_APP_PATH }} \
+              --dest-server https://kubernetes.default.svc \
+              --dest-namespace ${{ env.APP_NAMESPACE }} \
+              --sync-policy automated \
+              --auto-prune \
+              --self-heal \
+              --upsert \
+              --helm-set image.repository=${{ env.DOCKER_IMAGE }} \
+              --helm-set image.tag=${{ env.TAG }}
+
+        - name: Refresh ArgoCD Application
+          run: |
+            argocd app get ${{ env.ARGOCD_APP_NAME }} --refresh
+
+        - name: Wait for healthy rollout
+          run: |
+            argocd app wait ${{ env.ARGOCD_APP_NAME }} \
+              --health \
+              --timeout 300
+
+        - name: Print final application status
+          if: always()
+          run: |
+            argocd app get ${{ env.ARGOCD_APP_NAME }}
+
+  selenium-test:
+    name: Run Selenium Tests
+    runs-on: ubuntu-latest
+    needs: argocd-deploy
+    # Only run when a release tag is pushed
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Run Selenium test
+        run: node tests/selenium-test.js
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: selenium-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write        # required to create a GitHub Release
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          body: |
+            ## 🚀 Release ${{ github.ref_name }}
+
+            **Docker Image:** `${{ env.DOCKER_IMAGE }}:${{ github.ref_name }}`
+
+            ### What's included
+            - Automated deployment via ArgoCD
+            - Selenium tests passed ✅
+          draft: false
+          prerelease: false
