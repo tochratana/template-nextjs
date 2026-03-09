@@ -149,17 +149,26 @@ jobs:
         run: |
           argocd app get ${{ env.ARGOCD_APP_NAME }}
 
+  install-chrome: 
+    name: install chrome
+    runs-on: ubuntu-latest
+    needs: argocd-deploy
+    steps:
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
   selenium-test:
     name: Run Selenium Tests
     runs-on: ubuntu-latest
     needs: argocd-deploy
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -172,5 +181,5 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: Run Selenium Tests
+      - name: Run Selenium test
         run: node tests/selenium-test.js
