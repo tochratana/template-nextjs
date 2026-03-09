@@ -23,8 +23,8 @@ env:
   SONAR_SKIP: ""
 
 jobs:
-  build-scan-push:
-    name: Build, Scan & Push Image
+  build-push:
+    name: Build and Push Image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
