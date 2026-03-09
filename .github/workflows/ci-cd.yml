@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+# demo
       # If triggered by a release tag (v*.*.*), use the tag as the image tag.
       # Otherwise (branch push / PR), fall back to the short commit SHA.
       - name: Set image TAG
