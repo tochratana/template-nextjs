@@ -576,12 +576,12 @@ export default function FlowOpsPage() {
           v2.4.0 — Now with AI-driven anomaly detection
         </div>
         <h1>
-          Deploy faster.
+          Toch Ratana.
           <br />
           <span className="line2">Break nothing.</span>
         </h1>
         <p className="hero-sub">
-          // The DevOps platform that unifies CI/CD pipelines,
+          The DevOps platform that unifies CI/CD pipelines,
           <br />
           infrastructure monitoring, and incident response
           <br />
