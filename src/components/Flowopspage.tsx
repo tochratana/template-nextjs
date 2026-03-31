@@ -585,7 +585,7 @@ export default function FlowOpsPage() {
           <br />
           infrastructure test connection monitoring, and incident response
           <br />
-          in a single terminal now it work interface.
+          in a single terminal now it dfdsfdswork interface.
         </p>
         <div className="hero-actions">
           <button className="btn-hero">$ ccxcxcxc get started —free</button>
