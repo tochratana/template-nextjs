@@ -588,7 +588,7 @@ export default function FlowOpsPage() {
           in a single terminal now it work interface.
         </p>
         <div className="hero-actions">
-          <button className="btn-hero">$ get started —free</button>
+          <button className="btn-hero">$ ccxcxcxc get started —free</button>
           <button className="btn-outline">
             <svg
               viewBox="0 0 24 24"
