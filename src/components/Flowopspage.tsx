@@ -578,7 +578,7 @@ export default function FlowOpsPage() {
         <h1>
           Toch Ratana.
           <br />
-          <span className="line2">Break fdsgdfgdfgdfgdfgdfgdf.</span>
+          <span className="line2">Break fdsgdfsdfsdfsfsdfsdfsdfsdfsdfsfgdfgdfgdfgdfgdf.</span>
         </h1>
         <p className="hero-sub">
           The DevOps platform that unifies CI/CD pipelines,
