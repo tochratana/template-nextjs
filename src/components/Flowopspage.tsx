@@ -583,7 +583,7 @@ export default function FlowOpsPage() {
         <p className="hero-sub">
           The DevOps platform that unifies CI/CD pipelines,
           <br />
-          infrastructure monitoring, and incident response
+          infrastructure test connection monitoring, and incident response
           <br />
           in a single terminal now it work interface.
         </p>
