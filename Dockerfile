@@ -43,9 +43,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Commented out because non-root users cannot bind to ports below 1024 (like port 80)
 # USER nextjs
 
-EXPOSE 80
+EXPOSE 3000
 
-ENV PORT=80
+ENV PORT=3000
 # set hostname to localhost
 ENV HOSTNAME="0.0.0.0"
 
