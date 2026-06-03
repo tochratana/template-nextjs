@@ -576,7 +576,7 @@ export default function FlowOpsPage() {
           v2.4.0 — Now with AI-driven anomaly detection
         </div>
         <h1>
-          Toch Ratana.
+          Sl ke mneak eng.
           <br />
           <span className="line2">Chob rean hx.</span>
         </h1>
